@@ -1,5 +1,4 @@
-// pages/api/submit.ts
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { PrismaClient } from "@prisma/client";
 
@@ -13,14 +12,10 @@ const hookSchema = z.object({
   action: z.enum(["enter_long", "enter_short"]),
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
-
+export async function POST(req: Request) {
   try {
-    const parsed = hookSchema.parse(req.body);
+    const body = await req.json();
+    const parsed = hookSchema.parse(body);
 
     const result = await prisma.tradeSignal.create({
       data: {
@@ -32,12 +27,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    return res.status(200).json({ message: "Stored successfully", id: result.id });
+    return NextResponse.json({ message: "Stored successfully", id: result.id });
   } catch (error) {
     console.error("❌ Error:", error);
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: "Validation failed", errors: error.errors });
+      return NextResponse.json({ message: "Validation failed", errors: error.errors }, { status: 400 });
     }
-    return res.status(500).json({ message: "Internal Server Error" });
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
